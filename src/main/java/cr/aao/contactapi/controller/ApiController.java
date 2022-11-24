@@ -5,25 +5,80 @@
 
 package cr.aao.contactapi.controller;
 
+import cr.aao.contactapi.dto.ContactDTO;
+import cr.aao.contactapi.dto.ContactResponse;
 import cr.aao.contactapi.dto.ContactsResponse;
+import cr.aao.contactapi.entity.Contact;
 import cr.aao.contactapi.service.ContactService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.validation.Errors;
+import org.springframework.web.bind.annotation.*;
+
+import javax.validation.Valid;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1")
 public class ApiController {
 
   private final ContactService contactService;
+  private final Logger logger = LoggerFactory.getLogger(ApiController.class);
 
   @Autowired
   public ApiController(ContactService contactService) {
     this.contactService = contactService;
+  }
+
+  @PostMapping(value = "/contact", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+  public ResponseEntity<ContactResponse> createContact(@Valid @RequestBody ContactDTO contactDTO, Errors errors) {
+    logger.info("create-contact-post");
+    logger.info(contactDTO.toString());
+    logger.info(errors.toString());
+    HttpStatus httpStatus = HttpStatus.NO_CONTENT;
+    ContactResponse contactResponse = new ContactResponse();
+    if (errors.hasErrors()) {
+      logger.warn("Errores en el ingreso de datos: " + errors);
+      contactResponse.setCode("ERR-002");
+      contactResponse.setMessage("Datos inválidos en la llamada.");
+      httpStatus = HttpStatus.BAD_REQUEST;
+      return new ResponseEntity<>(contactResponse, httpStatus);
+    }
+    try {
+      if (contactDTO.getEmail() != null && !contactDTO.getEmail().isBlank()) {
+        Contact contact = new Contact();
+        Optional<Contact> contactResult;
+        contact.setId(null);
+        contact.setFirstName(contactDTO.getFirstName());
+        contact.setLastName(contactDTO.getLastName());
+        contact.setEmail(contactDTO.getEmail());
+        contact.setBirthday(contactDTO.getBirthday());
+        contact.setEnabled(true);
+        contactResult = contactService.create(contact);
+        if (contactResult.isPresent()) {
+          httpStatus = HttpStatus.OK;
+          contactResponse.setContact(contact);
+          contactResponse.setCode("CT-1001");
+          contactResponse.setMessage("Contacto creado satisfactoriamente.");
+        }
+      } else {
+        contactResponse.setCode("ERR-003");
+        contactResponse.setMessage("Datos requeridos no están presentes.");
+        httpStatus = HttpStatus.BAD_REQUEST;
+        return new ResponseEntity<>(contactResponse, httpStatus);
+      }
+    } catch (Exception ex) {
+      logger.error("Error " + ex.getMessage());
+      httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+      contactResponse.setContact(null);
+      contactResponse.setCode("ERR-003");
+      contactResponse.setMessage("Error al crear el contacto.");
+    }
+    return new ResponseEntity<>(contactResponse, httpStatus);
   }
 
   @GetMapping(value = "/contact", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -36,9 +91,9 @@ public class ApiController {
       contactsResponse.setCode("CT-1000");
       return new ResponseEntity<>(contactsResponse, httpStatus);
     } catch (Exception ex) {
-      contactsResponse.setCode("ERR-1020");
+      contactsResponse.setCode("ERR-001");
       contactsResponse.setMessage(ex.getMessage());
-      System.out.println("ERROR " + ex.getMessage());
+      logger.error("ERROR " + ex.getMessage());
       return new ResponseEntity<>(contactsResponse, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
