@@ -28,7 +28,7 @@ public class ContactServiceImpl implements ContactService {
   @Override
   public Optional<Contact> create(Contact contact) throws Exception {
     try {
-      contactRepository.save(contact);
+      contactRepository.saveAndFlush(contact);
       return Optional.of(contact);
     } catch (Exception ex) {
       System.out.println("Error " + ex.getMessage());
@@ -37,8 +37,14 @@ public class ContactServiceImpl implements ContactService {
   }
 
   @Override
-  public Boolean delete(Contact contact) {
-    return null;
+  public Boolean delete(Contact contact) throws Exception {
+    try {
+      contactRepository.delete(contact);
+      return true;
+    } catch (Exception ex) {
+      System.out.println("Error " + ex.getMessage());
+      throw new Exception("No pudo crearse el contact");
+    }
   }
 
   @Override
@@ -52,12 +58,24 @@ public class ContactServiceImpl implements ContactService {
   }
 
   @Override
-  public Optional<Contact> findById(Integer id) {
-    return Optional.empty();
+  public Optional<Contact> findById(Integer id) throws Exception {
+    try {
+      return contactRepository.findById(id);
+    } catch (Exception ex) {
+      System.out.println("Error " + ex.getMessage());
+      throw new Exception("No pudo consultar el contacto con ID " + id);
+    }
   }
 
   @Override
-  public Optional<Contact> update(Contact contact) {
-    return Optional.empty();
+  public Optional<Contact> update(Contact contact) throws Exception {
+    try {
+      contactRepository.saveAndFlush(contact);
+      return Optional.of(contact);
+    } catch (Exception ex) {
+      System.out.println("Error " + ex.getMessage());
+      throw new Exception("No pudo actualizarse el contact");
+    }
+
   }
 }

@@ -66,7 +66,7 @@ public class ApiController {
           contactResponse.setMessage("Contacto creado satisfactoriamente.");
         }
       } else {
-        contactResponse.setCode("ERR-003");
+        contactResponse.setCode("ERR-004");
         contactResponse.setMessage("Datos requeridos no están presentes.");
         httpStatus = HttpStatus.BAD_REQUEST;
         return new ResponseEntity<>(contactResponse, httpStatus);
@@ -75,8 +75,43 @@ public class ApiController {
       logger.error("Error " + ex.getMessage());
       httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
       contactResponse.setContact(null);
-      contactResponse.setCode("ERR-003");
+      contactResponse.setCode("ERR-004");
       contactResponse.setMessage("Error al crear el contacto.");
+    }
+    return new ResponseEntity<>(contactResponse, httpStatus);
+  }
+
+  @DeleteMapping(value = "/contact/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+  public ResponseEntity<ContactResponse> deleteContact(@PathVariable Integer id) {
+    logger.info("delete-contact");
+    HttpStatus httpStatus = HttpStatus.NO_CONTENT;
+    ContactResponse contactResponse = new ContactResponse();
+    try {
+      if (id != null && id > 0) {
+        Optional<Contact> contact = contactService.findById(id);
+        if (contact.isPresent()) {
+          if (contactService.delete(contact.get())) {
+            contactResponse.setCode("OK");
+            contactResponse.setMessage("Contacto eliminado correctamente");
+            httpStatus = HttpStatus.OK;
+          }
+        } else {
+          contactResponse.setCode("ERR-005");
+          contactResponse.setMessage("No se encontró el contacto con el ID proporcionado");
+          httpStatus = HttpStatus.BAD_REQUEST;
+        }
+      } else {
+        contactResponse.setCode("ERR-005");
+        contactResponse.setMessage("Debe proporcionar un ID válido");
+        httpStatus = HttpStatus.BAD_REQUEST;
+        return new ResponseEntity<>(contactResponse, httpStatus);
+      }
+    } catch (Exception ex) {
+      logger.error("Error " + ex.getMessage());
+      httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+      contactResponse.setContact(null);
+      contactResponse.setCode("ERR-005");
+      contactResponse.setMessage("Error al eliminar el contacto.");
     }
     return new ResponseEntity<>(contactResponse, httpStatus);
   }
@@ -101,5 +136,58 @@ public class ApiController {
   @GetMapping(value = "/get-version")
   public ResponseEntity<String> getVersion() {
     return new ResponseEntity<>("1.0.0", HttpStatus.ACCEPTED);
+  }
+
+  @PatchMapping(value = "/contact", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+  public ResponseEntity<ContactResponse> updateContact(@Valid @RequestBody ContactDTO contactDTO, Errors errors) {
+    logger.info("update-contact-patch");
+    logger.info(contactDTO.toString());
+    logger.info(errors.toString());
+    HttpStatus httpStatus = HttpStatus.NO_CONTENT;
+    ContactResponse contactResponse = new ContactResponse();
+    if (errors.hasErrors()) {
+      logger.warn("Errores en el ingreso de datos: " + errors);
+      contactResponse.setCode("ERR-002");
+      contactResponse.setMessage("Datos inválidos en la llamada.");
+      httpStatus = HttpStatus.BAD_REQUEST;
+      return new ResponseEntity<>(contactResponse, httpStatus);
+    }
+    try {
+      if (contactDTO.getId() != null && contactDTO.getEmail() != null && !contactDTO.getEmail().isBlank()) {
+        Optional<Contact> contact = contactService.findById(contactDTO.getId());
+        Optional<Contact> contactResult;
+        if (contact.isPresent()) {
+          contact.get().setFirstName(contactDTO.getFirstName());
+          contact.get().setLastName(contactDTO.getLastName());
+          contact.get().setEmail(contactDTO.getEmail());
+          contact.get().setBirthday(contactDTO.getBirthday());
+          contact.get().setEnabled(true);
+          contactResult = contactService.update(contact.get());
+          if (contactResult.isPresent()) {
+            httpStatus = HttpStatus.OK;
+            contactResponse.setContact(contactResult.get());
+            contactResponse.setCode("CT-1002");
+            contactResponse.setMessage("Contacto actualizado satisfactoriamente.");
+          }
+        } else {
+          contactResponse.setCode("ERR-004");
+          contactResponse.setMessage("No se encontró el contacto con el ID proporcionado");
+          httpStatus = HttpStatus.BAD_REQUEST;
+        }
+
+      } else {
+        contactResponse.setCode("ERR-003");
+        contactResponse.setMessage("Datos requeridos no están presentes.");
+        httpStatus = HttpStatus.BAD_REQUEST;
+        return new ResponseEntity<>(contactResponse, httpStatus);
+      }
+    } catch (Exception ex) {
+      logger.error("Error " + ex.getMessage());
+      httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+      contactResponse.setContact(null);
+      contactResponse.setCode("ERR-003");
+      contactResponse.setMessage("Error al actualizar el contacto.");
+    }
+    return new ResponseEntity<>(contactResponse, httpStatus);
   }
 }

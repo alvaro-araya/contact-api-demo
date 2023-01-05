@@ -14,12 +14,12 @@ public interface ContactService {
 
   Optional<Contact> create(Contact contact) throws Exception;
 
-  Boolean delete(Contact contact);
+  Boolean delete(Contact contact) throws Exception;
 
   List<Contact> findAll() throws Exception;
 
-  Optional<Contact> findById(Integer id);
+  Optional<Contact> findById(Integer id) throws Exception;
 
-  Optional<Contact> update(Contact contact);
+  Optional<Contact> update(Contact contact) throws Exception;
 
 }
